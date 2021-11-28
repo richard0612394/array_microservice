@@ -37,7 +37,6 @@ public class ArrayPermutationProvider {
     //array keys
     private List<String> arrayKeys;
     private final ExecutorService permutationCalculatingExecutor;
-    private int maximumSuccessfullyComputedPermutationsArraySize;
 
     /**
      * Create a new array permutation provider.
@@ -50,7 +49,6 @@ public class ArrayPermutationProvider {
         this.targetResultSizeCache = new ConcurrentHashMap<>();
         this.permutationCalculatingExecutor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
         this.arrayKeys = Collections.synchronizedList(new ArrayList<>());
-        this.maximumSuccessfullyComputedPermutationsArraySize = 0;
     }
 
     /**
@@ -176,9 +174,6 @@ public class ArrayPermutationProvider {
         Object[] sourceArrayObjects = array.toArray();
         performPermutationOnSubArray(0, sourceArrayObjects, arrayKey);
         updateProgressOfPermutation(arrayKey);
-        if (maximumSuccessfullyComputedPermutationsArraySize < array.size()) {
-            maximumSuccessfullyComputedPermutationsArraySize = array.size();
-        }
         return permutationsCache.get(arrayKey);
     }
 
