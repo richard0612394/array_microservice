@@ -26,6 +26,7 @@ public class ArrayPermutationProvider {
     //constant given by maximum value factorial can be computed using long
     public static final int MAXIMUM_ALLOWED_ARRAY_SIZE = 20;
 
+
     //storage of arrays passed in by setArray
     private Map<String, List> arraysCache;
     //storage of results
@@ -36,6 +37,7 @@ public class ArrayPermutationProvider {
     private Map<String, Long> targetResultSizeCache;
     //array keys
     private List<String> arrayKeys;
+    //keys of arrays that were successfully send
     private List<String> successfullySendArrayKeys;
     private final ExecutorService permutationCalculatingExecutor;
 
@@ -121,7 +123,6 @@ public class ArrayPermutationProvider {
      * @return              List of permutations
      */
     public List<List<Object>> getPermutationsOfArray(String arrayKey) throws InvalidKeyException {
-        System.out.println("Going to get permutations of array.");
         if (!arrayKeyExists(arrayKey)) {
             invokeGarbageCollector();
             throw new InvalidParameterException("Parameter '" + arrayKey + "' not registered.");
@@ -202,6 +203,7 @@ public class ArrayPermutationProvider {
      * @param   arrayKey            array identifier
      */
     private void performPermutationOnSubArray(int i, Object[] sourceArrayObjects, String arrayKey) {
+        //at this point, size of this array could be estimated
         if (permutationsCache.get(arrayKey).size() % 100 == 0 && !isMemoryAvailable()) {
             clearArrayFromCache(arrayKey);
             cleanSuccessfullySendCacheEntries();
@@ -338,17 +340,8 @@ public class ArrayPermutationProvider {
      *
      * @return   long value of memory
      */
-    private long getMaxAvailableMemory() {
+    private long getMaxAvailableRuntimeMemory() {
         return Runtime.getRuntime().maxMemory();
-    }
-
-    /**
-     * Get free runtime memory.
-     *
-     * @return   long value of memory
-     */
-    private long getFreeRuntimeMemory() {
-        return Runtime.getRuntime().freeMemory();
     }
 
     /**
@@ -356,7 +349,7 @@ public class ArrayPermutationProvider {
      *
      * @return   long value of memory
      */
-    private long getTotalUsedRuntimeMemory() {
+    private long getTotalRuntimeMemory() {
         return Runtime.getRuntime().totalMemory();
     }
 
@@ -369,12 +362,12 @@ public class ArrayPermutationProvider {
     }
 
     /**
-     * Return true if at least 10% of runtime memory is available.
+     * Return true if more than 90% of runtime memory is used.
      *
-     * @return true if more than 10% of memory is available
+     * @return true if more than 90% of memory is used
      */
     private boolean isMemoryAvailable() {
-        return getTotalUsedRuntimeMemory() / getMaxAvailableMemory() < 0.9;
+        return getTotalRuntimeMemory() / getMaxAvailableRuntimeMemory() < 0.9;
     }
 
     /**
@@ -382,11 +375,9 @@ public class ArrayPermutationProvider {
      *
      */
     private synchronized void cleanSuccessfullySendCacheEntries() {
-        System.out.println("Successfully send array keys before removal: " + successfullySendArrayKeys);
         for (String successfullySendArrayKey : successfullySendArrayKeys) {
             clearArrayFromCache(successfullySendArrayKey);
             successfullySendArrayKeys.remove(successfullySendArrayKey);
         }
-        System.out.println("All keys are successfully removed.");
     }
 }
