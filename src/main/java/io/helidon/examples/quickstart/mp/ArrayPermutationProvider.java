@@ -172,7 +172,6 @@ public class ArrayPermutationProvider {
      * @return              array of lists of permutations
      */
     private List<List<Object>> getAllPermutationsOfAnArray(String arrayKey) {
-        List<List<Object>> permutedList = permutationsCache.get(arrayKey);
         List array = arraysCache.get(arrayKey);
         Object[] sourceArrayObjects = array.toArray();
         performPermutationOnSubArray(0, sourceArrayObjects, arrayKey);
@@ -180,19 +179,20 @@ public class ArrayPermutationProvider {
         if (maximumSuccessfullyComputedPermutationsArraySize < array.size()) {
             maximumSuccessfullyComputedPermutationsArraySize = array.size();
         }
-        return permutedList;
+        return permutationsCache.get(arrayKey);
     }
 
     /**
      * Recursively calculate all permutations of array sourceArrayObjects.
      * Results are stored in permutationsCache map and identified by arrayKey.
+     * Check if at least 90% of memory is available on every 100-th recursion
      *
      * @param   i                   index
      * @param   sourceArrayObjects  array whose permutations are being calculated
      * @param   arrayKey            array identifier
      */
     private void performPermutationOnSubArray(int i, Object[] sourceArrayObjects, String arrayKey) {
-        if (permutationsCache.get(arrayKey).size() % 1000 == 0) {
+        if (permutationsCache.get(arrayKey).size() % 100 == 0) {
             if (!isMemoryAvailable()) {
                 clearArrayFromCache(arrayKey);
                 return;
