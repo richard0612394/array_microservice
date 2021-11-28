@@ -91,7 +91,9 @@ public class ArrayResource {
             if (async) {
                 return createStringResponse("progress", arrayProvider.getProgressInPercents(id));
             } else {
-                return createArrayResponse("array", arrayProvider.getPermutationsOfArray(id));
+                List<List<Object>> array = arrayProvider.getPermutationsOfArray(id);
+                arrayProvider.confirmReception(id);
+                return createArrayResponse("array", array);
             }
         } catch (InvalidParameterException e) {
             System.out.println(e.getMessage());

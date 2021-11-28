@@ -36,6 +36,7 @@ public class ArrayPermutationProvider {
     private Map<String, Long> targetResultSizeCache;
     //array keys
     private List<String> arrayKeys;
+    private List<String> successfullySendArrayKeys;
     private final ExecutorService permutationCalculatingExecutor;
 
     /**
@@ -47,8 +48,9 @@ public class ArrayPermutationProvider {
         this.permutationsCache = new ConcurrentHashMap<>();
         this.progressCache = new ConcurrentHashMap<>();
         this.targetResultSizeCache = new ConcurrentHashMap<>();
-        this.permutationCalculatingExecutor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
         this.arrayKeys = Collections.synchronizedList(new ArrayList<>());
+        this.successfullySendArrayKeys = Collections.synchronizedList(new ArrayList<>());
+        this.permutationCalculatingExecutor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
     }
 
     /**
@@ -83,21 +85,12 @@ public class ArrayPermutationProvider {
     }
 
     /**
-     * Add new array to arraysCache.
+     * Add key to successfullySendArrayKeys list if array with key was successfully send.
      *
-     * @param   newArrayKey array of objects
-     * @param   array       array of objects
-     * @return              arrayKey uniquely identifying the array
+     * @param   arrayKey    array identifier value
      */
-    private synchronized String submitNewArrayPermutationCalculation(String newArrayKey, List array) {
-        this.arraysCache.put(newArrayKey, array);
-        long arrayFactorial = factorial(array.size());
-        this.targetResultSizeCache.put(newArrayKey, arrayFactorial);
-        this.progressCache.put(newArrayKey, -1L);
-        this.permutationsCache.put(newArrayKey, new ArrayList<>());
-        arrayKeys.add(newArrayKey);
-        permutationCalculatingExecutor.submit(() -> permutationsCache.put(newArrayKey, getPermutationsOfArray(newArrayKey)));
-        return newArrayKey;
+    public void confirmReception(String arrayKey) {
+        successfullySendArrayKeys.add(arrayKey);
     }
 
     /**
@@ -128,6 +121,7 @@ public class ArrayPermutationProvider {
      * @return              List of permutations
      */
     public List<List<Object>> getPermutationsOfArray(String arrayKey) throws InvalidKeyException {
+        System.out.println("Going to get permutations of array.");
         if (!arrayKeyExists(arrayKey)) {
             invokeGarbageCollector();
             throw new InvalidParameterException("Parameter '" + arrayKey + "' not registered.");
@@ -143,6 +137,25 @@ public class ArrayPermutationProvider {
             }
             return permutationsCache.get(arrayKey);
         }
+    }
+
+    /**
+     * Add new array to arraysCache.
+     *
+     * @param   newArrayKey array of objects
+     * @param   array       array of objects
+     * @return              arrayKey uniquely identifying the array
+     */
+    private synchronized String submitNewArrayPermutationCalculation(String newArrayKey, List array) {
+        this.arraysCache.put(newArrayKey, array);
+        long arrayFactorial = factorial(array.size());
+        this.targetResultSizeCache.put(newArrayKey, arrayFactorial);
+        this.progressCache.put(newArrayKey, -1L);
+        this.permutationsCache.put(newArrayKey, new ArrayList<>());
+        arrayKeys.add(newArrayKey);
+        permutationCalculatingExecutor
+                .submit(() -> permutationsCache.put(newArrayKey, getPermutationsOfArray(newArrayKey)));
+        return newArrayKey;
     }
 
     /**
@@ -180,18 +193,20 @@ public class ArrayPermutationProvider {
     /**
      * Recursively calculate all permutations of array sourceArrayObjects.
      * Results are stored in permutationsCache map and identified by arrayKey.
-     * Check if at least 90% of memory is available on every 100-th recursion
+     * Check if at least 90% of memory is available on every 100-th recursion,
+     * if not, remove calculated results and also remove all cached results
+     * that were already successfully send.
      *
      * @param   i                   index
      * @param   sourceArrayObjects  array whose permutations are being calculated
      * @param   arrayKey            array identifier
      */
     private void performPermutationOnSubArray(int i, Object[] sourceArrayObjects, String arrayKey) {
-        if (permutationsCache.get(arrayKey).size() % 100 == 0) {
-            if (!isMemoryAvailable()) {
-                clearArrayFromCache(arrayKey);
-                return;
-            }
+        if (permutationsCache.get(arrayKey).size() % 100 == 0 && !isMemoryAvailable()) {
+            clearArrayFromCache(arrayKey);
+            cleanSuccessfullySendCacheEntries();
+            invokeGarbageCollector();
+            return;
         }
         updateProgressOfPermutation(arrayKey);
         int sizeOfSourceArray = sourceArrayObjects.length;
@@ -316,7 +331,6 @@ public class ArrayPermutationProvider {
         targetResultSizeCache.remove(arrayKey);
         progressCache.remove(arrayKey);
         arrayKeys.remove(arrayKey);
-        invokeGarbageCollector();
     }
 
     /**
@@ -361,5 +375,18 @@ public class ArrayPermutationProvider {
      */
     private boolean isMemoryAvailable() {
         return getTotalUsedRuntimeMemory() / getMaxAvailableMemory() < 0.9;
+    }
+
+    /**
+     * Remove all cache results that were already successfully send.
+     *
+     */
+    private synchronized void cleanSuccessfullySendCacheEntries() {
+        System.out.println("Successfully send array keys before removal: " + successfullySendArrayKeys);
+        for (String successfullySendArrayKey : successfullySendArrayKeys) {
+            clearArrayFromCache(successfullySendArrayKey);
+            successfullySendArrayKeys.remove(successfullySendArrayKey);
+        }
+        System.out.println("All keys are successfully removed.");
     }
 }
